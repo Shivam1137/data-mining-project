@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Prospecting Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            overflow-x: hidden;
+        }
+
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .upload-box {
+            background: white;
+            border: 3px dashed #cbd5e0;
+            border-radius: 16px;
+            padding: 60px 80px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            max-width: 600px;
+        }
+
+        .upload-box:hover {
+            border-color: #667eea;
+            transform: translateY(-4px);
+            box-shadow: 0 25px 70px rgba(0,0,0,0.2);
+        }
+
+        .upload-box h2 {
+            margin-bottom: 16px;
+            font-size: 28px;
+            color: #2d3748;
+            font-weight: 700;
+        }
+
+        .upload-box p {
+            color: #718096;
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+
+        .upload-box input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        #fileName {
+            margin-top: 20px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .warning-message {
+            background: #feebc8;
+            color: #c05621;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .dashboard {
+            display: none;
+            height: 100vh;
+        }
+
+        .top-bar {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .top-stats {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .top-stat {
+            text-align: center;
+        }
+
+        .top-stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .top-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 65px);
+        }
+
+        .sidebar {
+            width: 320px;
+            background: white;
+            padding: 24px;
+            overflow-y: auto;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .sidebar h2 {
+            color: #2d3748;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-section {
+            margin-bottom: 24px;
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            padding: 8px 0;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .filter-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .filter-content.expanded {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .filter-search {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .filter-search:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .filter-options {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .filter-option:hover {
+            background: #f7fafc;
+        }
+
+        .filter-option input[type="checkbox"] {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .radio-options {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #4a5568;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .apply-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 24px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .apply-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .clear-btn {
+            width: 100%;
+            padding: 10px;
+            background: white;
+            color: #667eea;
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            background: #f7fafc;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+            background: #f5f7fa;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .content-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .rows-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .rows-selector select {
+            padding: 8px 32px 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            color: #2d3748;
+            transition: all 0.2s;
+        }
+
+        .rows-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .export-btn {
+            padding: 10px 20px;
+            background: white;
+            color: #667eea;
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .export-btn:hover {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-table th {
+            background: #f7fafc;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table tr:hover {
+            background: #f7fafc;
+        }
+
+        .data-table td {
+            color: #2d3748;
+            font-size: 14px;
+        }
+
+        .email-cell {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .email-cell:hover {
+            text-decoration: underline;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-primary {
+            background: #e6f0ff;
+            color: #667eea;
+        }
+
+        .badge-success {
+            background: #d4f4dd;
+            color: #38a169;
+        }
+
+        .badge-warning {
+            background: #fef5e7;
+            color: #d97706;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 24px;
+            padding: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            background: white;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            color: #718096;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #718096;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            margin: 4px;
+        }
+
+        .filter-badge button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            min-height: 24px;
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .instruction-message {
+            background: #e6f0ff;
+            border: 1px solid #667eea;
+            color: #4a5568;
+            padding: 40px 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .instruction-message h3 {
+            font-size: 20px;
+            color: #2d3748;
+            margin-bottom: 12px;
+        }
+
+        .instruction-message p {
+            font-size: 16px;
+            color: #718096;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f7fafc;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 280px;
+            }
+            
+            .upload-box {
+                padding: 40px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-section" id="uploadSection">
+        <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+            <h2>📊 Upload Your Data</h2>
+            <p>Click to select or drag your CSV file here</p>
+            <button class="upload-btn">Choose CSV File</button>
+            <input type="file" id="fileInput" accept=".csv">
+            <p id="fileName"></p>
+            <div class="error-message" id="errorMessage"></div>
+            <div class="warning-message" id="warningMessage"></div>
+        </div>
+    </div>
+
+    <div class="dashboard" id="dashboard">
+        <div class="top-bar">
+            <div class="logo">🎯 DataProspect</div>
+            <div class="top-stats">
+                <div class="top-stat">
+                    <div class="top-stat-label">Total Contacts</div>
+                    <div class="top-stat-value" id="topTotalRecords">0</div>
+                </div>
+                <div class="top-stat">
+                    <div class="top-stat-label">Filtered Results</div>
+                    <div class="top-stat-value" id="topFilteredRecords">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="sidebar">
+                <h2>🔍 Filters</h2>
+
+                <div class="filter-section">
+                    <div class="filter-header" onclick="toggleFilter('country')">
+                        <span class="filter-label">📍 Country</span>
+                        <span class="toggle-icon" id="country-toggle">▼</span>
+                    </div>
+                    <div class="filter-content" id="country-content">
+                        <input type="text" class="filter-search" placeholder="Search countries..." id="countrySearch">
+                        <div class="filter-options" id="countryOptions"></div>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-header" onclick="toggleFilter('industry')">
+                        <span class="filter-label">🏢 Industry Type</span>
+                        <span class="toggle-icon" id="industry-toggle">▼</span>
+                    </div>
+                    <div class="filter-content" id="industry-content">
+                        <input type="text" class="filter-search" placeholder="Search industries..." id="industrySearch">
+                        <div class="filter-options" id="industryOptions"></div>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-header" onclick="toggleFilter('jobLevel')">
+                        <span class="filter-label">👤 Job Title Level</span>
+                        <span class="toggle-icon" id="jobLevel-toggle">▼</span>
+                    </div>
+                    <div class="filter-content" id="jobLevel-content">
+                        <div class="filter-options" id="jobLevelOptions"></div>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-header" onclick="toggleFilter('function')">
+                        <span class="filter-label">💼 Job Function</span>
+                        <span class="toggle-icon" id="function-toggle">▼</span>
+                    </div>
+                    <div class="filter-content" id="function-content">
+                        <input type="text" class="filter-search" placeholder="Search functions..." id="functionSearch">
+                        <div class="filter-options" id="functionOptions"></div>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-header" onclick="toggleFilter('employeeSize')">
+                        <span class="filter-label">👥 Company Size</span>
+                        <span class="toggle-icon" id="employeeSize-toggle">▼</span>
+                    </div>
+                    <div class="filter-content" id="employeeSize-content">
+                        <div class="filter-options" id="employeeSizeOptions"></div>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-header" onclick="toggleFilter('contact')">
+                        <span class="filter-label">📞 Contact Info</span>
+                        <span class="toggle-icon" id="contact-toggle">▼</span>
+                    </div>
+                    <div class="filter-content" id="contact-content">
+                        <div style="margin-bottom: 16px;">
+                            <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">Phone Number</div>
+                            <div class="radio-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="phone" value="all" checked>
+                                    All
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="phone" value="yes">
+                                    Has Phone
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="phone" value="no">
+                                    No Phone
+                                </label>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">Direct Number</div>
+                            <div class="radio-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="direct" value="all" checked>
+                                    All
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="direct" value="yes">
+                                    Has Direct
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="direct" value="no">
+                                    No Direct
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">Email Address</div>
+                            <div class="radio-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="email" value="all" checked>
+                                    All
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="email" value="yes">
+                                    Has Email
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="email" value="no">
+                                    No Email
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
+                <button class="clear-btn" onclick="clearFilters()">Clear All Filters</button>
+            </div>
+
+            <div class="main-content">
+                <div class="content-header">
+                    <div class="content-title">Contacts</div>
+                    <div class="header-actions">
+                        <div class="rows-selector">
+                            <label>Show:</label>
+                            <select id="rowsPerPage" onchange="changeRowsPerPage()">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="250">250</option>
+                                <option value="500">500</option>
+                            </select>
+                        </div>
+                        <button class="export-btn" onclick="exportData()">⬇ Export CSV</button>
+                    </div>
+                </div>
+
+                <div class="active-filters" id="activeFilters"></div>
+
+                <div class="table-container">
+                    <div class="instruction-message" id="instructionMessage">
+                        <h3>👈 Select Your Filters</h3>
+                        <p>Choose filters from the left sidebar and click "Apply Filters" to view contacts</p>
+                    </div>
+                    <table class="data-table" id="dataTable" style="display: none;">
+                        <thead id="tableHeader"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let masterData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        let rowsPerPage = 100;
+        let headers = [];
+        let filtersApplied = false;
+        let appliedFilters = {
+            country: [],
+            industry: [],
+            jobLevel: [],
+            function: [],
+            employeeSize: [],
+            phone: 'all',
+            direct: 'all',
+            email: 'all'
+        };
+
+        const fieldMapping = {
+            firstName: 'First Name',
+            lastName: 'Last Name',
+            email: 'Email Address',
+            emailStatus: 'Email Status',
+            jobTitle: 'Job Title',
+            jobLevel: 'Job Title Level',
+            functions: 'Functions',
+            company: 'Company Name',
+            address: 'Address1',
+            city: 'City',
+            state: 'State',
+            country: 'Country',
+            zipCode: 'Zip Code',
+            phone: 'Phone Number',
+            directNumber: 'Direct Number',
+            employeeSize: 'Employee Size',
+            industry: 'industry type',
+            jobUrl: 'Job Title URL',
+            companyUrl: 'Company URL',
+            domain: 'Domain'
+        };
+
+        const allCountries = [
+            "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", 
+            "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", 
+            "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", 
+            "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", 
+            "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", 
+            "Congo (Brazzaville)", "Congo, Democratic Rep. of (Kinshasa)", "Costa Rica", "Côte d'Ivoire", 
+            "Croatia", "Cuba", "Cyprus", "Czechia", "Denmark", "Djibouti", "Dominica", "Dominican Republic", 
+            "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", 
+            "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", 
+            "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", 
+            "Holy See (Vatican City)", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", 
+            "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", 
+            "Korea, North (DPRK)", "Korea, South (ROK)", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", 
+            "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", 
+            "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", 
+            "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", 
+            "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", 
+            "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine, State of", "Panama", 
+            "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", 
+            "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", 
+            "Samoa", "San Marino", "São Tomé and Príncipe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", 
+            "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", 
+            "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", 
+            "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", 
+            "Tunisia", "Türkiye", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", 
+            "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam", 
+            "Yemen", "Zambia", "Zimbabwe"
+        ];
+
+        const managementLevels = [
+            "C-Level", "VP-Level", "Director", "Manager", "Senior", "Entry Level", "Owner"
+        ];
+
+        const jobFunctions = [
+            "Finance", "Human Resources", "Information Technology", "Marketing", "Operations", "Sales"
+        ];
+
+        const companySizes = [
+            "1-10", "11-20", "21-50", "51-100", "101-200", "201-500", "501-1000", 
+            "1001-2000", "2001-5000", "5001-10000", "10001+"
+        ];
+
+        const industries = [
+            "Accounting", "Agriculture", "Airlines/Aviation", "Alternative Dispute Resolution",
+            "Alternative Medicine", "Animation", "Apparel & Fashion", "Architecture & Planning",
+            "Arts & Crafts", "Automotive", "Aviation & Aerospace", "Banking", "Biotechnology",
+            "Broadcast Media", "Building Materials", "Business Supplies & Equipment",
+            "Capital Markets", "Chemicals", "Civic & Social Organization", "Civil Engineering",
+            "Commercial Real Estate", "Computer & Network Security", "Computer Games",
+            "Computer Hardware", "Computer Networking", "Computer Software", "Construction",
+            "Consumer Electronics", "Consumer Goods", "Consumer Services", "Cosmetics", "Dairy",
+            "Defense & Space", "Design", "E-Learning", "Education Management",
+            "Electrical/Electronic Manufacturing", "Entertainment", "Environmental Services",
+            "Events Services", "Executive Office", "Facilities Services", "Farming",
+            "Financial Services", "Fine Art", "Fishery", "Food & Beverages", "Food Production",
+            "Fund-Raising", "Furniture", "Gambling & Casinos", "Glass, Ceramics & Concrete",
+            "Government Administration", "Government Relations", "Graphic Design",
+            "Health, Wellness & Fitness", "Higher Education", "Hospital & Health Care",
+            "Hospitality", "Human Resources", "Import & Export", "Individual & Family Services",
+            "Industrial Automation", "Information Services", "Information Technology & Services",
+            "Insurance", "International Affairs", "International Trade & Development", "Internet",
+            "Investment Banking", "Investment Management", "Judiciary", "Law Enforcement",
+            "Law Practice", "Legal Services", "Legislative Office", "Leisure, Travel & Tourism",
+            "Libraries", "Logistics & Supply Chain", "Luxury Goods & Jewelry", "Machinery",
+            "Management Consulting", "Maritime", "Market Research", "Marketing & Advertising",
+            "Mechanical or Industrial Engineering", "Media Production", "Medical Devices",
+            "Medical Practice", "Mental Health Care", "Military", "Mining & Metals",
+            "Motion Pictures & Film", "Museums & Institutions", "Music", "Nanotechnology",
+            "Newspapers", "Nonprofit Organization Management", "Oil & Energy", "Online Media",
+            "Outsourcing/Offshoring", "Package/Freight Delivery", "Packaging & Containers",
+            "Paper & Forest Products", "Performing Arts", "Pharmaceuticals", "Philanthropy",
+            "Photography", "Plastics", "Political Organization", "Primary/Secondary Education",
+            "Printing", "Professional Training & Coaching", "Program Development",
+            "Public Relations & Communications", "Public Sector", "Publishing",
+            "Railroad Manufacture", "Real Estate", "Religious Institutions",
+            "Renewables & Environment", "Restaurants", "Retail", "Security & Investigations",
+            "Semiconductors", "Shipbuilding", "Sporting Goods", "Sports", "Staffing & Recruiting",
+            "Supermarkets", "Telecommunications", "Textiles", "Think Tanks", "Tobacco",
+            "Translation & Localization", "Transportation/Trucking/Railroad", "Utilities",
+            "Venture Capital & Private Equity", "Warehousing"
+        ];
+
+        let searchTimeouts = {};
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const sizeMB = file.size / (1024 * 1024);
+                document.getElementById('fileName').textContent = `✓ ${file.name} (${sizeMB.toFixed(2)} MB)`;
+                
+                if (sizeMB > 50) {
+                    showWarning('Large file detected. This may take a moment to process.');
+                }
+                
+                loadCSV(file);
+            }
+        });
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        function showWarning(message) {
+            const warningEl = document.getElementById('warningMessage');
+            warningEl.textContent = message;
+            warningEl.style.display = 'block';
+        }
+
+        function loadCSV(file) {
+            document.getElementById('fileName').textContent = 'Loading...';
+            const reader = new FileReader();
+            
+            reader.onerror = function() {
+                showError('Error reading file. Please try again.');
+            };
+
+            reader.onload = function(e) {
+                Papa.parse(e.target.result, {
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: false,
+                    complete: function(results) {
+                        try {
+                            if (results.errors && results.errors.length > 0) {
+                                console.warn('CSV parsing warnings:', results.errors);
+                            }
+
+                            if (!results.data || results.data.length === 0) {
+                                showError('No data found in CSV file.');
+                                return;
+                            }
+
+                            masterData = results.data;
+                            headers = results.meta.fields;
+
+                            const requiredFields = [fieldMapping.firstName, fieldMapping.email];
+                            const missingFields = requiredFields.filter(f => !headers.includes(f));
+                            
+                            if (missingFields.length > 0) {
+                                showError(`Missing required columns: ${missingFields.join(', ')}`);
+                                return;
+                            }
+
+                            initializeDashboard();
+                        } catch (error) {
+                            showError('Error processing CSV: ' + error.message);
+                        }
+                    },
+                    error: function(error) {
+                        showError('Failed to parse CSV: ' + error.message);
+                    }
+                });
+            };
+            reader.readAsText(file);
+        }
+
+        function initializeDashboard() {
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            populateFilterOptions();
+            updateStats();
+            toggleFilter('country');
+        }
+
+        function extractUniqueValues(data, field) {
+            const values = data
+                .map(row => {
+                    const value = (row[field] || '').toString().trim();
+                    return value && value !== 'null' && value !== 'undefined' && value !== '' ? value : null;
+                })
+                .filter(v => v !== null);
+            
+            return [...new Set(values)].sort();
+        }
+
+        function populateFilterOptions() {
+            const countriesFromData = extractUniqueValues(masterData, fieldMapping.country);
+            const allCountriesMerged = [...new Set([...allCountries, ...countriesFromData])].sort();
+            
+            const jobLevelsFromData = extractUniqueValues(masterData, fieldMapping.jobLevel);
+            const allJobLevelsMerged = [...new Set([...managementLevels, ...jobLevelsFromData])].sort();
+            
+            const functionsFromData = extractUniqueValues(masterData, fieldMapping.functions);
+            const allFunctionsMerged = [...new Set([...jobFunctions, ...functionsFromData])].sort();
+
+            populateCheckboxFilter('countryOptions', allCountriesMerged, 'country');
+            populateCheckboxFilter('industryOptions', industries, 'industry');
+            populateCheckboxFilter('jobLevelOptions', allJobLevelsMerged, 'jobLevel');
+            populateCheckboxFilter('functionOptions', allFunctionsMerged, 'function');
+            populateCheckboxFilter('employeeSizeOptions', companySizes, 'employeeSize');
+            setupSearchFilters();
+        }
+
+        function populateCheckboxFilter(containerId, options, filterType) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            if (options.length === 0) {
+                container.innerHTML = '<p style="padding: 12px; color: #718096; font-size: 13px;">No data available</p>';
+                return;
+            }
+
+            options.forEach(option => {
+                const label = document.createElement('label');
+                label.className = 'filter-option';
+                label.innerHTML = `
+                    <input type="checkbox" value="${option}" onchange="updateFilterSelection('${filterType}', this)">
+                    ${option}
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        function setupSearchFilters() {
+            ['country', 'industry', 'function'].forEach(type => {
+                const searchInput = document.getElementById(`${type}Search`);
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        clearTimeout(searchTimeouts[type]);
+                        searchTimeouts[type] = setTimeout(() => {
+                            filterOptions(type, e.target.value);
+                        }, 300);
+                    });
+                }
+            });
+        }
+
+        function filterOptions(type, searchTerm) {
+            const options = document.getElementById(`${type}Options`).querySelectorAll('.filter-option');
+            const term = searchTerm.toLowerCase();
+            options.forEach(option => {
+                const text = option.textContent.toLowerCase();
+                option.style.display = text.includes(term) ? 'flex' : 'none';
+            });
+        }
+
+        function toggleFilter(filterName) {
+            const content = document.getElementById(`${filterName}-content`);
+            const toggle = document.getElementById(`${filterName}-toggle`);
+            content.classList.toggle('expanded');
+            toggle.classList.toggle('rotated');
+        }
+
+        function updateFilterSelection(type, checkbox) {
+            if (checkbox.checked) {
+                if (!appliedFilters[type].includes(checkbox.value)) {
+                    appliedFilters[type].push(checkbox.value);
+                }
+            } else {
+                appliedFilters[type] = appliedFilters[type].filter(v => v !== checkbox.value);
+            }
+        }
+
+        function applyFilters() {
+            appliedFilters.phone = document.querySelector('input[name="phone"]:checked').value;
+            appliedFilters.direct = document.querySelector('input[name="direct"]:checked').value;
+            appliedFilters.email = document.querySelector('input[name="email"]:checked').value;
+
+            filteredData = masterData.filter(row => {
+                if (appliedFilters.country.length > 0) {
+                    const country = (row[fieldMapping.country] || '').toString().trim();
+                    if (!appliedFilters.country.includes(country)) return false;
+                }
+
+                if (appliedFilters.industry.length > 0) {
+                    const industry = (row[fieldMapping.industry] || '').toString().trim();
+                    if (!appliedFilters.industry.includes(industry)) return false;
+                }
+
+                if (appliedFilters.jobLevel.length > 0) {
+                    const jobLevel = (row[fieldMapping.jobLevel] || '').toString().trim();
+                    if (!appliedFilters.jobLevel.includes(jobLevel)) return false;
+                }
+
+                if (appliedFilters.function.length > 0) {
+                    const func = (row[fieldMapping.functions] || '').toString().trim();
+                    if (!appliedFilters.function.includes(func)) return false;
+                }
+
+                if (appliedFilters.employeeSize.length > 0) {
+                    const size = (row[fieldMapping.employeeSize] || '').toString().trim();
+                    if (!appliedFilters.employeeSize.includes(size)) return false;
+                }
+
+                if (appliedFilters.phone === 'yes') {
+                    const phone = (row[fieldMapping.phone] || '').toString().trim();
+                    if (!phone || phone === 'null' || phone === 'undefined') return false;
+                }
+                if (appliedFilters.phone === 'no') {
+                    const phone = (row[fieldMapping.phone] || '').toString().trim();
+                    if (phone && phone !== 'null' && phone !== 'undefined') return false;
+                }
+
+                if (appliedFilters.direct === 'yes') {
+                    const direct = (row[fieldMapping.directNumber] || '').toString().trim();
+                    if (!direct || direct === 'null' || direct === 'undefined') return false;
+                }
+                if (appliedFilters.direct === 'no') {
+                    const direct = (row[fieldMapping.directNumber] || '').toString().trim();
+                    if (direct && direct !== 'null' && direct !== 'undefined') return false;
+                }
+
+                if (appliedFilters.email === 'yes') {
+                    const email = (row[fieldMapping.email] || '').toString().trim();
+                    if (!email || email === 'null' || email === 'undefined') return false;
+                }
+                if (appliedFilters.email === 'no') {
+                    const email = (row[fieldMapping.email] || '').toString().trim();
+                    if (email && email !== 'null' && email !== 'undefined') return false;
+                }
+
+                return true;
+            });
+
+            filtersApplied = true;
+            currentPage = 1;
+            updateStats();
+            displayData();
+            updateActiveFilters();
+        }
+
+        function clearFilters() {
+            appliedFilters = {
+                country: [],
+                industry: [],
+                jobLevel: [],
+                function: [],
+                employeeSize: [],
+                phone: 'all',
+                direct: 'all',
+                email: 'all'
+            };
+
+            document.querySelectorAll('.filter-option input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelector('input[name="phone"][value="all"]').checked = true;
+            document.querySelector('input[name="direct"][value="all"]').checked = true;
+            document.querySelector('input[name="email"][value="all"]').checked = true;
+
+            filteredData = [];
+            filtersApplied = false;
+            currentPage = 1;
+            updateStats();
+            showInstructionMessage();
+            updateActiveFilters();
+        }
+
+        function updateActiveFilters() {
+            const container = document.getElementById('activeFilters');
+            container.innerHTML = '';
+
+            Object.keys(appliedFilters).forEach(key => {
+                if (key === 'phone' || key === 'email' || key === 'direct') {
+                    if (appliedFilters[key] !== 'all') {
+                        const badge = createFilterBadge(`${key}: ${appliedFilters[key]}`, key, appliedFilters[key]);
+                        container.appendChild(badge);
+                    }
+                } else if (appliedFilters[key].length > 0) {
+                    appliedFilters[key].forEach(value => {
+                        const badge = createFilterBadge(value, key, value);
+                        container.appendChild(badge);
+                    });
+                }
+            });
+        }
+
+        function createFilterBadge(text, type, value) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge';
+            badge.innerHTML = `
+                ${text}
+                <button onclick="removeFilter('${type}', '${value.replace(/'/g, "\\'")}')">×</button>
+            `;
+            return badge;
+        }
+
+        function removeFilter(type, value) {
+            if (type === 'phone' || type === 'email' || type === 'direct') {
+                appliedFilters[type] = 'all';
+                document.querySelector(`input[name="${type}"][value="all"]`).checked = true;
+            } else {
+                appliedFilters[type] = appliedFilters[type].filter(v => v !== value);
+                const checkbox = document.querySelector(`.filter-option input[value="${value}"]`);
+                if (checkbox) checkbox.checked = false;
+            }
+            applyFilters();
+        }
+
+        function updateStats() {
+            document.getElementById('topTotalRecords').textContent = masterData.length.toLocaleString();
+            document.getElementById('topFilteredRecords').textContent = filtersApplied ? filteredData.length.toLocaleString() : '0';
+        }
+
+        function showInstructionMessage() {
+            document.getElementById('instructionMessage').style.display = 'block';
+            document.getElementById('dataTable').style.display = 'none';
+            document.getElementById('pagination').innerHTML = '';
+        }
+
+        function displayData() {
+            if (!filtersApplied) {
+                showInstructionMessage();
+                return;
+            }
+
+            document.getElementById('instructionMessage').style.display = 'none';
+            document.getElementById('dataTable').style.display = 'table';
+
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            
+            tableHeader.innerHTML = '';
+            const headerRow = document.createElement('tr');
+            
+            const displayHeaders = [
+                fieldMapping.firstName,
+                fieldMapping.lastName,
+                fieldMapping.jobTitle,
+                fieldMapping.jobLevel,
+                fieldMapping.email,
+                fieldMapping.phone,
+                fieldMapping.directNumber,
+                fieldMapping.company,
+                fieldMapping.country,
+                fieldMapping.functions,
+                fieldMapping.employeeSize,
+                fieldMapping.industry
+            ];
+            
+            const headerLabels = [
+                'First Name',
+                'Last Name',
+                'Job Title',
+                'Level',
+                'Email',
+                'Phone',
+                'Direct',
+                'Company',
+                'Country',
+                'Function',
+                'Size',
+                'Industry'
+            ];
+            
+            headerLabels.forEach(label => {
+                const th = document.createElement('th');
+                th.textContent = label;
+                headerRow.appendChild(th);
+            });
+            tableHeader.appendChild(headerRow);
+
+            tableBody.innerHTML = '';
+            
+            if (filteredData.length === 0) {
+                const emptyRow = document.createElement('tr');
+                const emptyCell = document.createElement('td');
+                emptyCell.colSpan = displayHeaders.length;
+                emptyCell.innerHTML = '<div class="empty-state"><h3>No contacts found</h3><p>Try adjusting your filters</p></div>';
+                emptyRow.appendChild(emptyCell);
+                tableBody.appendChild(emptyRow);
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + parseInt(rowsPerPage);
+            const pageData = filteredData.slice(start, end);
+
+            pageData.forEach(row => {
+                const tr = document.createElement('tr');
+                displayHeaders.forEach((header) => {
+                    const td = document.createElement('td');
+                    let value = (row[header] || '').toString().trim();
+                    
+                    if (!value || value === 'null' || value === 'undefined') {
+                        value = '-';
+                    }
+                    
+                    if (header === fieldMapping.email && value !== '-') {
+                        td.innerHTML = `<a href="mailto:${value}" class="email-cell">${value}</a>`;
+                    } else if (header === fieldMapping.jobLevel && value !== '-') {
+                        td.innerHTML = `<span class="badge badge-primary">${value}</span>`;
+                    } else if (header === fieldMapping.functions && value !== '-') {
+                        td.innerHTML = `<span class="badge badge-success">${value}</span>`;
+                    } else if (header === fieldMapping.employeeSize && value !== '-') {
+                        td.innerHTML = `<span class="badge badge-warning">${value}</span>`;
+                    } else {
+                        td.textContent = value;
+                    }
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+
+            updatePagination();
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            if (!filtersApplied || filteredData.length === 0) return;
+
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '← Previous';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                currentPage--;
+                displayData();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+            pagination.appendChild(prevBtn);
+
+            const pageInfo = document.createElement('span');
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            pagination.appendChild(pageInfo);
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Next →';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                currentPage++;
+                displayData();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+            pagination.appendChild(nextBtn);
+        }
+
+        function changeRowsPerPage() {
+            rowsPerPage = parseInt(document.getElementById('rowsPerPage').value);
+            currentPage = 1;
+            if (filtersApplied) {
+                displayData();
+            }
+        }
+
+        function exportData() {
+            if (!filtersApplied || filteredData.length === 0) {
+                alert('No data to export. Please apply filters first.');
+                return;
+            }
+
+            try {
+                const csv = Papa.unparse(filteredData);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                const timestamp = new Date().toISOString().slice(0, 10);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `contacts_export_${timestamp}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Error exporting data: ' + error.message);
+            }
+        }
+
+        window.addEventListener('beforeunload', () => {
+            masterData = [];
+            filteredData = [];
+        });
+    </script>
+</body>
+</html>
